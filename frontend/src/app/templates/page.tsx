@@ -28,12 +28,59 @@ export default function TemplatesPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
+  const DEFAULT_FALLBACK_TEMPLATES: Template[] = [
+    {
+      id: 1,
+      name: "Master Services Statement of Work (SOW)",
+      type: "sow",
+      description: "Milestone-driven professional services agreement with deliverable checkpoints and IP assignment.",
+      is_active: true,
+      created_at: new Date().toISOString(),
+      versions: [
+        {
+          id: 1,
+          template_id: 1,
+          version_no: 1,
+          file_path: "/templates/sow_v1.docx",
+          locked_at: null,
+          created_at: new Date().toISOString(),
+          field_schema: [
+            { key: "engagement_title", label: "Engagement Title", type: "string", required: true, default: "Full Stack Web Platform Engineering", group: "General" },
+            { key: "effective_date", label: "Effective Date", type: "date", required: true, default: "", group: "General" },
+          ],
+        },
+      ],
+    },
+    {
+      id: 2,
+      name: "Standard Bilateral Mutual NDA",
+      type: "nda",
+      description: "Two-way non-disclosure agreement for IP protection and preliminary contract negotiations.",
+      is_active: true,
+      created_at: new Date().toISOString(),
+      versions: [
+        {
+          id: 2,
+          template_id: 2,
+          version_no: 1,
+          file_path: "/templates/nda_v1.docx",
+          locked_at: null,
+          created_at: new Date().toISOString(),
+          field_schema: [
+            { key: "effective_date", label: "Effective Date", type: "date", required: true, default: "", group: "General" },
+          ],
+        },
+      ],
+    },
+  ];
+
   const fetchTemplates = async () => {
     try {
       const res = await api.get<Template[]>("/templates");
       setTemplates(res.data);
     } catch (err) {
-      console.error("Failed to load templates", err);
+      console.warn("Backend unavailable, loading local offline templates:", err);
+      setTemplates(DEFAULT_FALLBACK_TEMPLATES);
     } finally {
       setLoading(false);
     }

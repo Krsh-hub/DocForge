@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { api, Project, Client } from "@/lib/api";
+import { getOfflineClients, INITIAL_PROJECTS } from "@/lib/offline-data";
 import {
   Briefcase,
   Plus,
@@ -62,7 +63,14 @@ function ProjectsContent() {
       setProjects(projRes.data);
       setClients(clientRes.data);
     } catch (err) {
-      console.error("Failed to load projects", err);
+      console.warn("Backend unavailable, loading local offline projects and clients:", err);
+      const offClients = getOfflineClients();
+      setClients(offClients);
+      let projs = INITIAL_PROJECTS;
+      if (filterClientId) {
+        projs = projs.filter((p) => p.client_id === Number(filterClientId));
+      }
+      setProjects(projs);
     } finally {
       setLoading(false);
     }

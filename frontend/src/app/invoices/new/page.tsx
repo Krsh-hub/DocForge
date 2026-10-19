@@ -85,6 +85,13 @@ function numberToIndianWords(num: number): string {
   return `INR ${inWords(rounded)} Only`;
 }
 
+import {
+  getOfflineClients,
+  getOfflineProjects,
+  getOfflineSettings,
+  saveOfflineInvoice,
+} from "@/lib/offline-data";
+
 export default function NewInvoicePage() {
   const router = useRouter();
 
@@ -131,9 +138,9 @@ export default function NewInvoicePage() {
   const fetchInitialData = async () => {
     try {
       const [cRes, pRes, sRes] = await Promise.all([
-        api.get<Client[]>("/clients"),
-        api.get<Project[]>("/projects"),
-        api.get<CompanySettings>("/settings/company"),
+        api.get<Client[]>("/clients", { timeout: 3000 }),
+        api.get<Project[]>("/projects", { timeout: 3000 }),
+        api.get<CompanySettings>("/settings/company", { timeout: 3000 }),
       ]);
       setClients(cRes.data);
       setProjects(pRes.data);
@@ -149,8 +156,23 @@ export default function NewInvoicePage() {
         setPlaceOfSupply(firstClient.state || sRes.data.state || "West Bengal");
       }
     } catch (err) {
-      console.error("Failed to load invoice setup data", err);
-      setError("Failed to load clients and company settings.");
+      console.warn("API server unavailable, loading offline sample dataset:", err);
+      const offlineClients = getOfflineClients();
+      const offlineProjects = getOfflineProjects();
+      const offlineSettings = getOfflineSettings();
+      setClients(offlineClients);
+      setProjects(offlineProjects);
+      setCompany(offlineSettings);
+
+      if (offlineSettings.invoice_footer) {
+        setNotes(offlineSettings.invoice_footer);
+      }
+
+      if (offlineClients.length > 0) {
+        const firstClient = offlineClients[0];
+        setSelectedClientId(firstClient.id);
+        setPlaceOfSupply(firstClient.state || offlineSettings.state || "West Bengal");
+      }
     } finally {
       setLoading(false);
     }
@@ -284,7 +306,12 @@ export default function NewInvoicePage() {
         }),
       };
 
-      await api.post("/documents/invoice", payload);
+      try {
+        await api.post("/documents/invoice", payload, { timeout: 4000 });
+      } catch (postErr) {
+        console.warn("Backend unavailable, storing invoice locally:", postErr);
+        saveOfflineInvoice(payload);
+      }
       router.push("/invoices");
     } catch (err: any) {
       console.error("Failed to create invoice", err);
@@ -490,9 +517,9 @@ export default function NewInvoicePage() {
                       className="w-full text-xs px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
                     />
                   ) : (
-                    <div className="text-xs px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)] flex items-center justify-between">
-                      <span className="font-mono">INV/2026-27/[AUTO]</span>
-                      <span className="text-[10px] text-indigo-600 font-medium">Atomic Lock</span>
+                    <div className="text-xs px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)] flex items-center justify-between gap-1.5 flex-wrap">
+                      <span className="font-mono text-[11px] sm:text-xs">INV/2026-27/[AUTO]</span>
+                      <span className="text-[10px] text-indigo-600 font-medium shrink-0">Atomic Lock</span>
                     </div>
                   )}
                 </div>
@@ -513,7 +540,7 @@ export default function NewInvoicePage() {
             </div>
 
             {/* Section 2: Line Items */}
-            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm space-y-4">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 sm:p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-2">
                   <Receipt className="w-3.5 h-3.5 text-indigo-600" />
@@ -523,10 +550,10 @@ export default function NewInvoicePage() {
                 <button
                   type="button"
                   onClick={addItem}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-md transition-colors dark:bg-indigo-950 dark:hover:bg-indigo-900 dark:text-indigo-300"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition-colors dark:bg-indigo-950 dark:hover:bg-indigo-900 dark:text-indigo-300"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Add Line Item</span>
+                  <span>Add Item</span>
                 </button>
               </div>
 
@@ -540,10 +567,10 @@ export default function NewInvoicePage() {
                   return (
                     <div
                       key={item.id}
-                      className="p-3 border border-[var(--border)] rounded-lg bg-[var(--background)]/60 space-y-3"
+                      className="p-3 sm:p-4 border border-[var(--border)] rounded-xl bg-[var(--background)]/60 space-y-3"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-start justify-between gap-3">
+                        <div className="flex-1 w-full">
                           <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">
                             Item #{index + 1} Description <span className="text-red-500">*</span>
                           </label>
@@ -558,7 +585,7 @@ export default function NewInvoicePage() {
                           />
                         </div>
 
-                        <div className="w-48 shrink-0">
+                        <div className="w-full sm:w-52 shrink-0">
                           <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">
                             SAC / HSN Code
                           </label>
@@ -578,14 +605,16 @@ export default function NewInvoicePage() {
                         </div>
 
                         {items.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeItem(item.id)}
-                            title="Remove row"
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors mt-6 dark:hover:bg-red-950/50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex justify-end sm:mt-6">
+                            <button
+                              type="button"
+                              onClick={() => removeItem(item.id)}
+                              title="Remove item"
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-950/50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -852,6 +881,37 @@ export default function NewInvoicePage() {
                 <span>Record as Directly Paid</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Mobile Sticky Action Bar */}
+        <div className="lg:hidden fixed bottom-14 left-0 right-0 p-3 bg-[var(--card)]/95 backdrop-blur-md border-t border-[var(--border)] z-20 flex items-center justify-between gap-3 shadow-xl">
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">
+              Total Due
+            </span>
+            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 font-mono truncate">
+              {formatCurrency(grandTotal)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleSubmit("draft")}
+              disabled={submitting}
+              className="px-3 py-2 border border-[var(--border)] bg-[var(--background)] hover:bg-[var(--muted)] text-[var(--foreground)] text-xs font-semibold rounded-xl transition-all disabled:opacity-50"
+            >
+              Draft
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSubmit("sent")}
+              disabled={submitting}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-all disabled:opacity-50"
+            >
+              {submitting ? "Saving..." : "Issue & Send"}
+            </button>
           </div>
         </div>
       </div>

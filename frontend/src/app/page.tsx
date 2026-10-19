@@ -16,10 +16,16 @@ import {
   FileCheck2,
   CreditCard,
   Download,
+  Eye,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { api, CompanySettings, FinanceSummary, DocumentItem, API_BASE_URL } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
+import {
+  getOfflineSettings,
+  getOfflineFinanceSummary,
+  INITIAL_DOCUMENTS,
+} from "@/lib/offline-data";
 
 export default function DashboardPage() {
   const [company, setCompany] = useState<CompanySettings | null>(null);
@@ -38,7 +44,12 @@ export default function DashboardPage() {
         setFinance(fRes.data);
         setRecentDocs(dRes.data.slice(0, 5));
       })
-      .catch((err) => console.error("Error loading dashboard metrics", err))
+      .catch((err) => {
+        console.warn("Backend unavailable, loading offline dataset for dashboard:", err);
+        setCompany(getOfflineSettings());
+        setFinance(getOfflineFinanceSummary());
+        setRecentDocs(INITIAL_DOCUMENTS.slice(0, 5));
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -48,13 +59,13 @@ export default function DashboardPage() {
     <AppShell>
       <div className="space-y-8">
         {/* Welcome Banner */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-indigo-900 to-indigo-700 dark:from-indigo-950 dark:to-slate-900 rounded-2xl p-6 text-white shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-indigo-900 to-indigo-700 dark:from-indigo-950 dark:to-slate-900 rounded-2xl p-5 sm:p-6 text-white shadow-sm">
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 backdrop-blur-md mb-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
               <span>DocForge Local Enterprise</span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
               {company?.trade_name || company?.legal_name || "DocForge Workspace"}
             </h1>
             <p className="text-xs text-indigo-100 mt-1 max-w-xl">
@@ -62,17 +73,17 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full md:w-auto shrink-0">
             <Link
               href="/invoices/new"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-sm transition-all border border-indigo-400/30"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-sm transition-all border border-indigo-400/30"
             >
               <Receipt className="w-4 h-4" />
               <span>Create Invoice</span>
             </Link>
             <Link
               href="/documents/new"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 font-semibold text-xs shadow-sm transition-all"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 font-semibold text-xs shadow-sm transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>Generate Document</span>
@@ -81,71 +92,71 @@ export default function DashboardPage() {
         </div>
 
         {/* Live Executive Metric Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 sm:p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[var(--muted-foreground)]">Total Invoiced</span>
-              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg dark:bg-indigo-950 dark:text-indigo-400">
-                <Receipt className="w-4 h-4" />
+              <span className="text-[11px] sm:text-xs font-medium text-[var(--muted-foreground)] truncate">Total Invoiced</span>
+              <div className="p-1.5 sm:p-2 bg-indigo-50 text-indigo-600 rounded-lg dark:bg-indigo-950 dark:text-indigo-400 shrink-0">
+                <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-xl font-bold tracking-tight text-[var(--foreground)] font-mono">
+            <div className="mt-2 sm:mt-3">
+              <div className="text-base sm:text-xl font-bold tracking-tight text-[var(--foreground)] font-mono truncate">
                 {formatCurrency(finance?.total_invoiced || 0)}
               </div>
-              <span className="text-[11px] text-[var(--muted-foreground)] flex items-center gap-1 mt-1">
-                <span>Total billings across all accounts</span>
+              <span className="text-[10px] sm:text-[11px] text-[var(--muted-foreground)] flex items-center gap-1 mt-1 truncate">
+                <span>All accounts</span>
               </span>
             </div>
           </div>
 
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 sm:p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[var(--muted-foreground)]">Payments Collected</span>
-              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg dark:bg-emerald-950 dark:text-emerald-400">
-                <CheckCircle2 className="w-4 h-4" />
+              <span className="text-[11px] sm:text-xs font-medium text-[var(--muted-foreground)] truncate">Collected</span>
+              <div className="p-1.5 sm:p-2 bg-emerald-50 text-emerald-600 rounded-lg dark:bg-emerald-950 dark:text-emerald-400 shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
+            <div className="mt-2 sm:mt-3">
+              <div className="text-base sm:text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono truncate">
                 {formatCurrency(finance?.total_collected || 0)}
               </div>
-              <span className="text-[11px] text-[var(--muted-foreground)] flex items-center gap-1 mt-1">
-                <span>{finance?.paid_count || 0} fully settled invoices</span>
+              <span className="text-[10px] sm:text-[11px] text-[var(--muted-foreground)] flex items-center gap-1 mt-1 truncate">
+                <span>{finance?.paid_count || 0} settled</span>
               </span>
             </div>
           </div>
 
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 sm:p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[var(--muted-foreground)]">Outstanding Receivables</span>
-              <div className="p-2 bg-amber-50 text-amber-600 rounded-lg dark:bg-amber-950 dark:text-amber-400">
-                <Clock className="w-4 h-4" />
+              <span className="text-[11px] sm:text-xs font-medium text-[var(--muted-foreground)] truncate">Receivables</span>
+              <div className="p-1.5 sm:p-2 bg-amber-50 text-amber-600 rounded-lg dark:bg-amber-950 dark:text-amber-400 shrink-0">
+                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-xl font-bold tracking-tight text-amber-600 dark:text-amber-400 font-mono">
+            <div className="mt-2 sm:mt-3">
+              <div className="text-base sm:text-xl font-bold tracking-tight text-amber-600 dark:text-amber-400 font-mono truncate">
                 {formatCurrency(finance?.outstanding_receivables || 0)}
               </div>
-              <span className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-1">
-                <span>{finance?.overdue_count || 0} overdue invoices</span>
+              <span className="text-[10px] sm:text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-1 truncate">
+                <span>{finance?.overdue_count || 0} overdue</span>
               </span>
             </div>
           </div>
 
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 sm:p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[var(--muted-foreground)]">Contracts & SOWs</span>
-              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-950 dark:text-blue-400">
-                <FileText className="w-4 h-4" />
+              <span className="text-[11px] sm:text-xs font-medium text-[var(--muted-foreground)] truncate">Documents</span>
+              <div className="p-1.5 sm:p-2 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-950 dark:text-blue-400 shrink-0">
+                <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-xl font-bold tracking-tight text-[var(--foreground)] font-mono">
+            <div className="mt-2 sm:mt-3">
+              <div className="text-base sm:text-xl font-bold tracking-tight text-[var(--foreground)] font-mono">
                 {recentDocs.length}
               </div>
-              <span className="text-[11px] text-[var(--muted-foreground)] flex items-center gap-1 mt-1">
-                <span>Active documents in repository</span>
+              <span className="text-[10px] sm:text-[11px] text-[var(--muted-foreground)] flex items-center gap-1 mt-1 truncate">
+                <span>In repository</span>
               </span>
             </div>
           </div>
@@ -253,55 +264,103 @@ export default function DashboardPage() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[var(--muted)]/50 text-[var(--muted-foreground)] border-b border-[var(--border)]">
-                    <tr>
-                      <th className="py-2.5 px-3 font-semibold">Document #</th>
-                      <th className="py-2.5 px-3 font-semibold">Type</th>
-                      <th className="py-2.5 px-3 font-semibold">Client</th>
-                      <th className="py-2.5 px-3 font-semibold">Status</th>
-                      <th className="py-2.5 px-3 font-semibold text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border)]">
-                    {recentDocs.map((doc) => (
-                      <tr key={doc.id} className="hover:bg-[var(--muted)]/30 transition-colors">
-                        <td className="py-2.5 px-3 font-mono font-semibold text-[var(--foreground)]">
-                          {doc.doc_number}
-                        </td>
-                        <td className="py-2.5 px-3 uppercase text-[10px] font-bold text-[var(--muted-foreground)]">
-                          {doc.type}
-                        </td>
-                        <td className="py-2.5 px-3 font-medium text-[var(--foreground)]">
-                          {doc.client_legal_name || "—"}
-                        </td>
-                        <td className="py-2.5 px-3 capitalize">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                            {doc.status}
+              <div>
+                {/* Mobile Cards (md:hidden) */}
+                <div className="md:hidden divide-y divide-[var(--border)]">
+                  {recentDocs.map((doc) => (
+                    <div key={doc.id} className="py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-[var(--foreground)] truncate">
+                            {doc.doc_number}
                           </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-right">
-                          {doc.pdf_path ? (
-                            <a
-                              href={`${API_BASE_URL}${doc.pdf_path}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-indigo-600 hover:underline inline-flex items-center gap-1 font-medium"
-                            >
-                              <Download className="w-3 h-3" />
-                              <span>PDF</span>
-                            </a>
-                          ) : (
-                            <Link href="/documents" className="text-slate-400 hover:text-indigo-600">
-                              View
-                            </Link>
-                          )}
-                        </td>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] uppercase font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 shrink-0">
+                            {doc.type}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--muted-foreground)] truncate">
+                          {doc.client_legal_name || "General Counterparty"}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          {doc.status}
+                        </span>
+                        {doc.pdf_path ? (
+                          <a
+                            href={`${API_BASE_URL}${doc.pdf_path}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300"
+                            title="Download PDF"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </a>
+                        ) : (
+                          <Link
+                            href="/documents"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table (hidden md:block) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[var(--muted)]/50 text-[var(--muted-foreground)] border-b border-[var(--border)]">
+                      <tr>
+                        <th className="py-2.5 px-3 font-semibold">Document #</th>
+                        <th className="py-2.5 px-3 font-semibold">Type</th>
+                        <th className="py-2.5 px-3 font-semibold">Client</th>
+                        <th className="py-2.5 px-3 font-semibold">Status</th>
+                        <th className="py-2.5 px-3 font-semibold text-right">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {recentDocs.map((doc) => (
+                        <tr key={doc.id} className="hover:bg-[var(--muted)]/30 transition-colors">
+                          <td className="py-2.5 px-3 font-mono font-semibold text-[var(--foreground)]">
+                            {doc.doc_number}
+                          </td>
+                          <td className="py-2.5 px-3 uppercase text-[10px] font-bold text-[var(--muted-foreground)]">
+                            {doc.type}
+                          </td>
+                          <td className="py-2.5 px-3 font-medium text-[var(--foreground)]">
+                            {doc.client_legal_name || "—"}
+                          </td>
+                          <td className="py-2.5 px-3 capitalize">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                              {doc.status}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            {doc.pdf_path ? (
+                              <a
+                                href={`${API_BASE_URL}${doc.pdf_path}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-indigo-600 hover:underline inline-flex items-center gap-1 font-medium"
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>PDF</span>
+                              </a>
+                            ) : (
+                              <Link href="/documents" className="text-slate-400 hover:text-indigo-600">
+                                View
+                              </Link>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

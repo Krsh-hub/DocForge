@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { api, Client } from "@/lib/api";
+import { getOfflineClients, saveOfflineClient } from "@/lib/offline-data";
 import {
   Users,
   Plus,
@@ -20,6 +21,7 @@ import {
   Save,
   Check,
   AlertCircle,
+  Receipt,
 } from "lucide-react";
 
 interface ClientFull extends Client {
@@ -68,7 +70,9 @@ export default function ClientsPage() {
       const res = await api.get<ClientFull[]>("/clients");
       setClients(res.data);
     } catch (err) {
-      console.error("Failed to load clients", err);
+      console.warn("Backend unavailable, loading local offline clients:", err);
+      const offline = getOfflineClients();
+      setClients(offline as ClientFull[]);
     } finally {
       setLoading(false);
     }
@@ -144,7 +148,19 @@ export default function ClientsPage() {
         setSavedSuccess(false);
       }, 800);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to save client.");
+      console.warn("Backend client save failed, saving to local store:", err);
+      const saved = saveOfflineClient(form);
+      setClients((prev) => {
+        if (editingClient) {
+          return prev.map((c) => (c.id === editingClient.id ? { ...c, ...form } : c));
+        }
+        return [...prev, saved as ClientFull];
+      });
+      setSavedSuccess(true);
+      setTimeout(() => {
+        setShowAddModal(false);
+        setSavedSuccess(false);
+      }, 800);
     } finally {
       setSaving(false);
     }
@@ -247,7 +263,7 @@ export default function ClientsPage() {
 
                   <button
                     onClick={() => openEditModal(client)}
-                    className="p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors opacity-0 group-hover:opacity-100"
+                    className="p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                     title="Edit client"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -280,27 +296,37 @@ export default function ClientsPage() {
                   )}
                 </div>
 
-                {/* Footer with signatory */}
+                {/* Footer with signatory & actions */}
                 <div className="mt-4 pt-3 border-t border-[var(--border)] flex items-center justify-between">
-                  <div className="text-[11px] text-[var(--muted-foreground)]">
+                  <div className="text-[11px] text-[var(--muted-foreground)] truncate max-w-[130px] sm:max-w-none">
                     {client.signatory_name ? (
-                      <span>
+                      <span className="truncate">
                         Signatory:{" "}
                         <span className="font-semibold text-[var(--foreground)]">
                           {client.signatory_name}
                         </span>
                       </span>
                     ) : (
-                      <span className="italic">No signatory assigned</span>
+                      <span className="italic">No signatory</span>
                     )}
                   </div>
-                  <Link
-                    href={`/projects?client_id=${client.id}`}
-                    className="text-[11px] font-medium text-indigo-600 hover:underline flex items-center gap-0.5"
-                  >
-                    <span>Projects</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </Link>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                      href={`/invoices/new?client_id=${client.id}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-semibold transition-colors dark:bg-indigo-950 dark:text-indigo-300"
+                    >
+                      <Receipt className="w-3 h-3" />
+                      <span>Invoice</span>
+                    </Link>
+                    <Link
+                      href={`/projects?client_id=${client.id}`}
+                      className="text-[11px] font-medium text-[var(--muted-foreground)] hover:text-indigo-600 hover:underline flex items-center gap-0.5"
+                    >
+                      <span>Projects</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
