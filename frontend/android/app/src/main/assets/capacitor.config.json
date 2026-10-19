@@ -1,0 +1,9 @@
+{
+	"appId": "com.aksforge.docforge",
+	"appName": "DocForge",
+	"webDir": "out",
+	"server": {
+		"androidScheme": "https",
+		"cleartext": true
+	}
+}
