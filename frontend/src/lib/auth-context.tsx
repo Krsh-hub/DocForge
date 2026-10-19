@@ -43,11 +43,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     try {
       await api.post("/auth/logout");
+    } catch (err) {
+      console.error("Logout failed", err);
+    } finally {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("docforge_auth_token");
+      }
       setUser(null);
       setIsAuthenticated(false);
       window.location.href = "/login";
-    } catch (err) {
-      console.error("Logout failed", err);
     }
   };
 

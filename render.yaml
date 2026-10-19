@@ -1,0 +1,41 @@
+# DocForge Render Blueprint Specification
+# Deploys backend FastAPI (Docker Web Service) and frontend Next.js (Static Site)
+services:
+  # ---------------------------------------------------------------------------
+  # 1. Backend Web Service (FastAPI + Headless LibreOffice for PDF Generation)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: docforge-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DATA_DIR
+        value: /app/data
+      - key: SECRET_KEY
+        generateValue: true
+
+  # ---------------------------------------------------------------------------
+  # 2. Frontend Static Site (Next.js Static Export)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: docforge-frontend
+    runtime: static
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/out
+    autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: docforge-backend
+          envVarKey: RENDER_EXTERNAL_URL

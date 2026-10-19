@@ -17,10 +17,12 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS middleware for local frontend
+# CORS middleware for local frontend, cloud deployments (Render), and mobile apps
+allowed_origins = [o for o in (settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else ["http://localhost:3000"]) if o != "*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else ["http://localhost:3000"],
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https?://.*|capacitor://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

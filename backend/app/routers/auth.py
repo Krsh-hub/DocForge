@@ -16,6 +16,11 @@ def auth_status(request: Request, db: Session = Depends(get_db)):
     """Check whether system has an admin and if user is logged in"""
     admin_exists = db.query(User).filter(User.role == UserRole.ADMIN.value).first() is not None
     token = request.cookies.get(settings.COOKIE_NAME)
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+
     current_user_data = None
     if token:
         from app.core.security import decode_session_token
@@ -38,7 +43,7 @@ def auth_status(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/first-run", response_model=UserResponse)
-def first_run_setup(payload: UserFirstRun, response: Response, db: Session = Depends(get_db)):
+def first_run_setup(payload: UserFirstRun, request: Request, response: Response, db: Session = Depends(get_db)):
     """Create initial admin account if none exists"""
     admin_exists = db.query(User).filter(User.role == UserRole.ADMIN.value).first()
     if admin_exists:
@@ -65,20 +70,29 @@ def first_run_setup(payload: UserFirstRun, response: Response, db: Session = Dep
 
     # Set auth cookie
     token = create_session_token(user.id, user.username, user.role)
+    is_https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
     response.set_cookie(
         key=settings.COOKIE_NAME,
         value=token,
         httponly=True,
-        samesite="lax",
-        secure=False,  # localhost http
+        samesite="none" if is_https else "lax",
+        secure=is_https,
         max_age=settings.SESSION_EXPIRE_HOURS * 3600
     )
 
-    return user
+    return UserResponse(
+        id=user.id,
+        name=user.name,
+        username=user.username,
+        role=user.role,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        token=token
+    )
 
 
 @router.post("/login", response_model=UserResponse)
-def login(payload: UserLogin, response: Response, db: Session = Depends(get_db)):
+def login(payload: UserLogin, request: Request, response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == payload.username.lower().strip()).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
@@ -93,19 +107,29 @@ def login(payload: UserLogin, response: Response, db: Session = Depends(get_db))
         )
 
     token = create_session_token(user.id, user.username, user.role)
+    is_https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
     response.set_cookie(
         key=settings.COOKIE_NAME,
         value=token,
         httponly=True,
-        samesite="lax",
-        secure=False,
+        samesite="none" if is_https else "lax",
+        secure=is_https,
         max_age=settings.SESSION_EXPIRE_HOURS * 3600
     )
-    return user
+    return UserResponse(
+        id=user.id,
+        name=user.name,
+        username=user.username,
+        role=user.role,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        token=token
+    )
 
 
 @router.post("/logout")
 def logout(response: Response):
+    response.delete_cookie(key=settings.COOKIE_NAME, samesite="none", secure=True)
     response.delete_cookie(key=settings.COOKIE_NAME)
     return {"message": "Logged out successfully"}
 

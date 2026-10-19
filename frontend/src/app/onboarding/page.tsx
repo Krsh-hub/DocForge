@@ -37,11 +37,14 @@ export default function OnboardingPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post("/auth/first-run", {
+      const res = await api.post("/auth/first-run", {
         name,
         username,
         password,
       });
+      if (res.data?.token) {
+        localStorage.setItem("docforge_auth_token", res.data.token);
+      }
       await refreshAuth();
       router.push("/");
     } catch (err: any) {

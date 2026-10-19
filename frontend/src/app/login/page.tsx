@@ -25,10 +25,13 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post("/auth/login", {
+      const res = await api.post("/auth/login", {
         username,
         password,
       });
+      if (res.data?.token) {
+        localStorage.setItem("docforge_auth_token", res.data.token);
+      }
       await refreshAuth();
       router.push("/");
     } catch (err: any) {

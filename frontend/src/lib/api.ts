@@ -24,6 +24,11 @@ api.interceptors.request.use((config) => {
     if (saved) {
       config.baseURL = saved.replace(/\/+$/, "");
     }
+    const token = localStorage.getItem("docforge_auth_token");
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });

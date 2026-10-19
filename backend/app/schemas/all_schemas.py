@@ -29,6 +29,7 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     id: int
     created_at: datetime
+    token: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
