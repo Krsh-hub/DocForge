@@ -58,7 +58,7 @@ jobs:
       - name: Build Debug APK
         working-directory: ./frontend/android
         run: |
-          ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/gradle_build.log || {
+          ./gradlew :app:assembleDebug --stacktrace 2>&1 | tee /tmp/gradle_build.log || {
             echo "### Gradle Build Failure Log" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             tail -n 100 /tmp/gradle_build.log >> $GITHUB_STEP_SUMMARY
@@ -66,10 +66,16 @@ jobs:
             exit 1
           }
 
+      - name: Locate Generated APK
+        run: |
+          echo "### Finding generated APK files:"
+          find frontend/android -name "*.apk"
+          find frontend/android -name "*.apk" >> $GITHUB_STEP_SUMMARY
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DocForge-Android-Debug-APK
-          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+          path: frontend/android/**/*.apk
           if-no-files-found: error
           retention-days: 30
